@@ -175,7 +175,7 @@ class QdrantLocal(QdrantBase):
                 f" If you require concurrent access, use Qdrant server instead."
             )
 
-    def _save(self) -> None:
+    def _save(self, aliases: dict[str, str] | None = None) -> None:
         if not self.persistent:
             return
 
@@ -191,7 +191,7 @@ class QdrantLocal(QdrantBase):
                             collection_name: to_dict(collection.config)
                             for collection_name, collection in self.collections.items()
                         },
-                        "aliases": self.aliases,
+                        "aliases": self.aliases if aliases is None else aliases,
                     }
                 )
             )
@@ -748,8 +748,9 @@ class QdrantLocal(QdrantBase):
                 aliases[new_name] = aliases.pop(old_name)
             else:
                 raise ValueError(f"Unknown operation: {operation}")
+        # save first, so a failed write leaves the aliases in memory untouched as well
+        self._save(aliases=aliases)
         self.aliases = aliases
-        self._save()
         return True
 
     def get_collection_aliases(

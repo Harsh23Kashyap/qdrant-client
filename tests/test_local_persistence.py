@@ -1,3 +1,4 @@
+import os
 import random
 import tempfile
 
@@ -301,4 +302,28 @@ def test_alias_persistence():
 
         client = QdrantClient(path=tmpdir)
         assert aliases(client) == [("live", "docs_v2")]
+        client.close()
+
+
+def test_failed_alias_save_keeps_aliases():
+    """A batch whose save fails must not change the aliases in memory either."""
+    with tempfile.TemporaryDirectory() as tmpdir:
+        client = QdrantClient(path=tmpdir)
+        client.create_collection("docs", vectors_config={})
+
+        # a directory in place of meta.json makes the next save fail
+        meta_path = os.path.join(tmpdir, "meta.json")
+        os.remove(meta_path)
+        os.mkdir(meta_path)
+
+        with pytest.raises(OSError):
+            client.update_collection_aliases(
+                [
+                    rest.CreateAliasOperation(
+                        create_alias=rest.CreateAlias(collection_name="docs", alias_name="live")
+                    )
+                ]
+            )
+
+        assert client.get_aliases().aliases == []
         client.close()
