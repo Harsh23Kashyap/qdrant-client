@@ -103,7 +103,8 @@ def test_rejected_alias_changes_leave_aliases_untouched():
 
     Regression: local mode applied the operations one at a time, so the ones before the
     rejected operation stayed applied, and the next save wrote them to disk. It also accepted
-    an alias as the target of a new alias, which the server rejects.
+    an alias as the target of a new alias, and an alias named after an existing collection,
+    both of which the server rejects.
     """
     major, minor, patch, dev = read_version()
     if not dev and None not in (major, minor, patch) and (major, minor, patch) < (1, 19, 2):
@@ -163,6 +164,24 @@ def test_rejected_alias_changes_leave_aliases_untouched():
             create_alias=models.CreateAlias(
                 collection_name=alias_name,
                 alias_name=alias_name + "_new",
+            )
+        )
+    ]
+
+    with pytest.raises(ValueError):
+        local_client.update_collection_aliases(change_aliases_operations=ops)
+    with pytest.raises(UnexpectedResponse):
+        remote_client.update_collection_aliases(change_aliases_operations=ops)
+
+    compare_client_results(local_client, remote_client, retriever.list_aliases)
+    compare_client_results(local_client, remote_client, retriever.list_collection_aliases)
+
+    # an alias must not take the name of an existing collection
+    ops = [
+        models.CreateAliasOperation(
+            create_alias=models.CreateAlias(
+                collection_name=COLLECTION_NAME,
+                alias_name=COLLECTION_NAME,
             )
         )
     ]

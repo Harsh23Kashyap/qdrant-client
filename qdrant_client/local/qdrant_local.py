@@ -739,7 +739,11 @@ class QdrantLocal(QdrantBase):
                 # an alias must point at a collection, not at another alias
                 if collection_name not in self.collections:
                     raise ValueError(f"Collection {collection_name} not found")
-                aliases[operation.create_alias.alias_name] = collection_name
+                alias_name = operation.create_alias.alias_name
+                # and must not take the name of an existing collection
+                if alias_name in self.collections:
+                    raise ValueError(f"Collection {alias_name} already exists")
+                aliases[alias_name] = collection_name
             elif isinstance(operation, rest_models.DeleteAliasOperation):
                 aliases.pop(operation.delete_alias.alias_name, None)
             elif isinstance(operation, rest_models.RenameAliasOperation):
